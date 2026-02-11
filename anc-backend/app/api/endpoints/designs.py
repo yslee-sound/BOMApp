@@ -32,7 +32,9 @@ def auto_design(house_id: int, request: AutoDesignRequest, db: Session = Depends
         width=survey.living_room_width,
         depth=survey.living_room_depth,
         obstacles=request.obstacles,
-        offset=request.offset
+        offset=request.offset,
+        speaker_width=survey.speaker_width or 130.0,
+        speaker_length=survey.speaker_length or 600.0
     )
     
     # 기존 설계 확인

@@ -146,6 +146,8 @@ const DesignView: React.FC = () => {
               depth={survey.living_room_depth}
               vsPositions={design.vs_positions}
               spkPositions={design.spk_positions}
+              speakerLength={survey.speaker_length || 600}
+              speakerWidth={survey.speaker_width || 130}
               onUpdatePositions={handleUpdatePositions}
             />
           </Box>

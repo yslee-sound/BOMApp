@@ -24,6 +24,9 @@ const SurveyForm: React.FC = () => {
     living_room_width: '',
     living_room_depth: '',
     ceiling_height: '',
+    speaker_length: '600',
+    speaker_width: '130',
+    speaker_height: '130',
     has_molding: false,
     molding_width: '',
     has_air_conditioner: false,
@@ -56,6 +59,9 @@ const SurveyForm: React.FC = () => {
         living_room_width: survey.living_room_width.toString(),
         living_room_depth: survey.living_room_depth.toString(),
         ceiling_height: survey.ceiling_height?.toString() || '',
+        speaker_length: survey.speaker_length?.toString() || '600',
+        speaker_width: survey.speaker_width?.toString() || '130',
+        speaker_height: survey.speaker_height?.toString() || '130',
         has_molding: survey.has_molding,
         molding_width: survey.molding_width?.toString() || '',
         has_air_conditioner: survey.has_air_conditioner,
@@ -78,6 +84,9 @@ const SurveyForm: React.FC = () => {
         living_room_width: parseFloat(formData.living_room_width),
         living_room_depth: parseFloat(formData.living_room_depth),
         ceiling_height: formData.ceiling_height ? parseFloat(formData.ceiling_height) : undefined,
+        speaker_length: formData.speaker_length ? parseFloat(formData.speaker_length) : 600,
+        speaker_width: formData.speaker_width ? parseFloat(formData.speaker_width) : 130,
+        speaker_height: formData.speaker_height ? parseFloat(formData.speaker_height) : 130,
         has_molding: formData.has_molding,
         molding_width: formData.molding_width ? parseFloat(formData.molding_width) : undefined,
         has_air_conditioner: formData.has_air_conditioner,
@@ -154,6 +163,43 @@ const SurveyForm: React.FC = () => {
                 helperText="선택사항"
               />
             </Grid>
+            
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                스피커 규격 (mm)
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="스피커 길이 (L)"
+                type="number"
+                value={formData.speaker_length}
+                onChange={(e) => setFormData({ ...formData, speaker_length: e.target.value })}
+                helperText="기본값: 600mm"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="스피커 폭 (W)"
+                type="number"
+                value={formData.speaker_width}
+                onChange={(e) => setFormData({ ...formData, speaker_width: e.target.value })}
+                helperText="기본값: 130mm"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="스피커 높이 (H)"
+                type="number"
+                value={formData.speaker_height}
+                onChange={(e) => setFormData({ ...formData, speaker_height: e.target.value })}
+                helperText="기본값: 130mm"
+              />
+            </Grid>
+            
             <Grid item xs={12} sm={6}>
               <FormControlLabel
                 control={

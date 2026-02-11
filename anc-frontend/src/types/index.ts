@@ -23,6 +23,9 @@ export interface Survey {
   living_room_width: number;
   living_room_depth: number;
   ceiling_height?: number;
+  speaker_length?: number;  // 스피커 길이 (mm)
+  speaker_width?: number;   // 스피커 폭 (mm)
+  speaker_height?: number;  // 스피커 높이 (mm)
   has_molding: boolean;
   molding_width?: number;
   has_air_conditioner: boolean;
