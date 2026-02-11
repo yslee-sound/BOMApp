@@ -49,6 +49,9 @@ class SurveyBase(BaseModel):
     living_room_width: float
     living_room_depth: float
     ceiling_height: Optional[float] = None
+    speaker_length: Optional[float] = 600.0  # 스피커 길이 (mm)
+    speaker_width: Optional[float] = 130.0   # 스피커 폭 (mm)
+    speaker_height: Optional[float] = 130.0  # 스피커 높이 (mm)
     has_molding: bool = False
     molding_width: Optional[float] = None
     has_air_conditioner: bool = False
