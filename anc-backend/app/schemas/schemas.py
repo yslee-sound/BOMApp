@@ -88,6 +88,7 @@ class DesignBase(BaseModel):
     vs_positions: List[dict]
     spk_positions: List[dict]
     controller_position: Optional[dict] = None
+    speaker_gaps: Optional[dict] = None  # 각 변의 스피커 간격 정보
 
 
 class DesignCreate(DesignBase):

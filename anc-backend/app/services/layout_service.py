@@ -47,7 +47,7 @@ class LayoutService:
                                total_speakers: int = 12, 
                                offset: float = 100,
                                speaker_width: float = 130,
-                               speaker_length: float = 600) -> List[Dict]:
+                               speaker_length: float = 600) -> Tuple[List[Dict], Dict[str, float]]:
         """
         거실 중앙의 우물천장 라인을 따라 스피커 배치
         스피커는 우물천장 라인 바깥쪽(거실 외곽 방향)에 붙어서 배치
@@ -61,7 +61,7 @@ class LayoutService:
             speaker_length: 스피커 길이 (mm) - 기본값 600mm
         
         Returns:
-            스피커 위치 리스트
+            (스피커 위치 리스트, 각 변의 gap 정보)
         """
         # 스피커 개수 제한 (10~12개)
         total_speakers = max(10, min(12, total_speakers))
@@ -127,6 +127,7 @@ class LayoutService:
         
         positions = []
         speaker_id = 1
+        gaps = {}  # 각 변의 gap 정보 저장
         
         # 스피커 폭의 절반 (스피커를 우물천장 라인 바깥으로 배치하기 위해)
         half_speaker_width = speaker_width / 2
@@ -140,6 +141,7 @@ class LayoutService:
             remaining_space = ceiling_width - total_speaker_length
             # 간격 (시작, 중간, 끝)
             gap = remaining_space / (top_count + 1)
+            gaps['top'] = round(gap, 1)
             
             for i in range(top_count):
                 # i번째 스피커 중심 = 간격*(i+1) + 스피커길이*i + 스피커길이/2
@@ -160,6 +162,7 @@ class LayoutService:
             total_speaker_length = speaker_length * right_count
             remaining_space = ceiling_depth - total_speaker_length
             gap = remaining_space / (right_count + 1)
+            gaps['right'] = round(gap, 1)
             
             for i in range(right_count):
                 x = ceiling_end_x + half_speaker_width
@@ -178,6 +181,7 @@ class LayoutService:
             total_speaker_length = speaker_length * bottom_count
             remaining_space = ceiling_width - total_speaker_length
             gap = remaining_space / (bottom_count + 1)
+            gaps['bottom'] = round(gap, 1)
             
             for i in range(bottom_count):
                 # 하단은 오른쪽에서 왼쪽으로 배치
@@ -198,6 +202,7 @@ class LayoutService:
             total_speaker_length = speaker_length * left_count
             remaining_space = ceiling_depth - total_speaker_length
             gap = remaining_space / (left_count + 1)
+            gaps['left'] = round(gap, 1)
             
             for i in range(left_count):
                 x = ceiling_start_x - half_speaker_width
@@ -212,7 +217,7 @@ class LayoutService:
                 })
                 speaker_id += 1
         
-        return positions[:total_speakers]
+        return positions[:total_speakers], gaps
 
     @staticmethod
     def avoid_obstacles(positions: List[Dict], obstacles: List[Dict], 
@@ -281,7 +286,7 @@ class LayoutService:
         vs_positions = self.calculate_vs_positions(width, depth, offset)
         
         # SPK 배치
-        spk_positions = self.calculate_spk_positions(
+        spk_positions, speaker_gaps = self.calculate_spk_positions(
             width, depth, 
             speaker_width=speaker_width,
             speaker_length=speaker_length
@@ -298,5 +303,6 @@ class LayoutService:
         return {
             "vs_positions": vs_positions,
             "spk_positions": spk_positions,
-            "controller_position": controller_position
+            "controller_position": controller_position,
+            "speaker_gaps": speaker_gaps
         }
