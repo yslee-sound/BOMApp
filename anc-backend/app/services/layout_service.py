@@ -44,10 +44,11 @@ class LayoutService:
 
     @staticmethod
     def calculate_spk_positions(width: float, depth: float, 
-                               total_speakers: int = 12, 
+                               total_speakers: int = None,  # None이면 자동 계산
                                offset: float = 100,
                                speaker_width: float = 130,
-                               speaker_length: float = 600) -> Tuple[List[Dict], Dict[str, float]]:
+                               speaker_length: float = 600,
+                               min_gap: float = 200) -> Tuple[List[Dict], Dict[str, float]]:
         """
         거실 중앙의 우물천장 라인을 따라 스피커 배치
         스피커는 우물천장 라인 바깥쪽(거실 외곽 방향)에 붙어서 배치
@@ -55,22 +56,19 @@ class LayoutService:
         Args:
             width: 거실 가로 길이 (mm)
             depth: 거실 세로 길이 (mm)
-            total_speakers: 총 스피커 개수 (10~12개)
+            total_speakers: 총 스피커 개수 (None이면 자동 계산)
             offset: 우물천장 여유 공간 (mm) - 거실 외곽에서 우물천장까지의 거리
             speaker_width: 스피커 폭 (mm) - 기본값 130mm
             speaker_length: 스피커 길이 (mm) - 기본값 600mm
+            min_gap: 최소 스피커 간격 (mm) - 기본값 200mm
         
         Returns:
             (스피커 위치 리스트, 각 변의 gap 정보)
         """
-        # 스피커 개수 제한 (10~12개)
-        total_speakers = max(10, min(12, total_speakers))
-        
         # 거실 모양 분석 (장변/단변 비율)
         aspect_ratio = max(width, depth) / min(width, depth)
         
-        # 우물천장 크기 계산 (거실 크기의 60~75%)
-        # 장방형일수록 크게, 정사각형에 가까울수록 작게
+        # 초기 우물천장 크기 계산 (거실 크기의 60~75%)
         if aspect_ratio > 1.5:  # 장방형
             ceiling_ratio = 0.75
         elif aspect_ratio > 1.2:  # 약간 긴 형태
@@ -78,9 +76,79 @@ class LayoutService:
         else:  # 정사각형에 가까움
             ceiling_ratio = 0.65
         
-        # 우물천장 크기
-        ceiling_width = width * ceiling_ratio
-        ceiling_depth = depth * ceiling_ratio
+        # 초기 우물천장 크기
+        initial_ceiling_width = width * ceiling_ratio
+        initial_ceiling_depth = depth * ceiling_ratio
+        
+        # 각 변에 배치 가능한 최대 스피커 개수 계산 (min_gap 기준)
+        # 공식: 각 변 길이 = min_gap × (count + 1) + speaker_length × count
+        # 정리: count <= (각 변 길이 - min_gap) / (speaker_length + min_gap)
+        max_width_count = int((initial_ceiling_width - min_gap) / (speaker_length + min_gap))
+        max_depth_count = int((initial_ceiling_depth - min_gap) / (speaker_length + min_gap))
+        
+        # 최소 2개는 배치
+        max_width_count = max(2, max_width_count)
+        max_depth_count = max(2, max_depth_count)
+        
+        # total_speakers가 None이면 최대 개수로 자동 계산
+        if total_speakers is None:
+            total_speakers = 2 * (max_width_count + max_depth_count)
+        else:
+            # 지정된 경우에도 최대 개수 제한
+            max_total = 2 * (max_width_count + max_depth_count)
+            total_speakers = min(total_speakers, max_total)
+        
+        # 최소 8개는 배치
+        total_speakers = max(8, total_speakers)
+        
+        # 우물천장 둘레 비율 계산
+        perimeter = 2 * (initial_ceiling_width + initial_ceiling_depth)
+        width_ratio = initial_ceiling_width / perimeter
+        depth_ratio = initial_ceiling_depth / perimeter
+        
+        # 각 변의 스피커 개수 초기 배분 (비율 기반)
+        top_count = max(2, min(max_width_count, round(total_speakers * width_ratio)))
+        bottom_count = max(2, min(max_width_count, round(total_speakers * width_ratio)))
+        left_count = max(2, min(max_depth_count, round(total_speakers * depth_ratio)))
+        right_count = total_speakers - (top_count + bottom_count + left_count)
+        right_count = max(2, min(max_depth_count, right_count))
+        
+        # 개수 조정 (합이 total_speakers가 되고 max 제약 만족)
+        while (top_count + bottom_count + left_count + right_count) > total_speakers:
+            if top_count > 2 and top_count <= max_width_count:
+                top_count -= 1
+            elif bottom_count > 2 and bottom_count <= max_width_count:
+                bottom_count -= 1
+            elif left_count > 2 and left_count <= max_depth_count:
+                left_count -= 1
+            elif right_count > 2 and right_count <= max_depth_count:
+                right_count -= 1
+            else:
+                break
+        
+        while (top_count + bottom_count + left_count + right_count) < total_speakers:
+            if top_count < max_width_count and top_count == bottom_count:
+                top_count += 1
+            elif bottom_count < max_width_count and bottom_count < top_count:
+                bottom_count += 1
+            elif left_count < max_depth_count and left_count == right_count:
+                left_count += 1
+            elif right_count < max_depth_count and right_count < left_count:
+                right_count += 1
+            else:
+                break
+        
+        # 실제 필요한 우물천장 크기 계산 (min_gap 기반)
+        required_ceiling_width = (speaker_length * top_count) + (min_gap * (top_count + 1))
+        required_ceiling_depth = (speaker_length * max(left_count, right_count)) + (min_gap * (max(left_count, right_count) + 1))
+        
+        # 우물천장 크기 결정 (초기 크기와 필요 크기 중 큰 것 사용)
+        ceiling_width = max(initial_ceiling_width, required_ceiling_width)
+        ceiling_depth = max(initial_ceiling_depth, required_ceiling_depth)
+        
+        # 거실 크기를 넘지 않도록 제한
+        ceiling_width = min(ceiling_width, width * 0.9)
+        ceiling_depth = min(ceiling_depth, depth * 0.9)
         
         # 우물천장 시작점 (중앙 배치)
         ceiling_start_x = (width - ceiling_width) / 2
@@ -89,41 +157,6 @@ class LayoutService:
         # 우물천장 끝점
         ceiling_end_x = ceiling_start_x + ceiling_width
         ceiling_end_y = ceiling_start_y + ceiling_depth
-        
-        # 우물천장 둘레
-        ceiling_perimeter = 2 * (ceiling_width + ceiling_depth)
-        
-        # 각 변에 배치할 스피커 개수 계산 (둘레 비율에 따라)
-        width_ratio = ceiling_width / ceiling_perimeter
-        depth_ratio = ceiling_depth / ceiling_perimeter
-        
-        # 각 변의 스피커 개수 (최소 2개씩 배치)
-        top_count = max(2, round(total_speakers * width_ratio))
-        bottom_count = max(2, round(total_speakers * width_ratio))
-        left_count = max(2, round(total_speakers * depth_ratio))
-        right_count = total_speakers - (top_count + bottom_count + left_count)
-        right_count = max(2, right_count)
-        
-        # 개수 조정 (합이 total_speakers가 되도록)
-        while (top_count + bottom_count + left_count + right_count) > total_speakers:
-            if top_count > 2:
-                top_count -= 1
-            elif bottom_count > 2:
-                bottom_count -= 1
-            elif left_count > 2:
-                left_count -= 1
-            elif right_count > 2:
-                right_count -= 1
-        
-        while (top_count + bottom_count + left_count + right_count) < total_speakers:
-            if top_count == bottom_count and top_count < (total_speakers // 4 + 1):
-                top_count += 1
-            elif bottom_count < top_count:
-                bottom_count += 1
-            elif left_count == right_count and left_count < (total_speakers // 4 + 1):
-                left_count += 1
-            elif right_count < left_count:
-                right_count += 1
         
         positions = []
         speaker_id = 1
@@ -267,7 +300,8 @@ class LayoutService:
     def auto_design(self, width: float, depth: float, 
                    obstacles: List[Dict] = None, offset: float = 300,
                    speaker_width: float = 130,
-                   speaker_length: float = 600) -> Dict:
+                   speaker_length: float = 600,
+                   min_gap: float = 200) -> Dict:
         """
         자동 설계 생성
         
@@ -278,6 +312,7 @@ class LayoutService:
             offset: 오프셋
             speaker_width: 스피커 폭 (mm)
             speaker_length: 스피커 길이 (mm)
+            min_gap: 최소 스피커 간격 (mm)
         
         Returns:
             설계 결과
@@ -289,7 +324,8 @@ class LayoutService:
         spk_positions, speaker_gaps = self.calculate_spk_positions(
             width, depth, 
             speaker_width=speaker_width,
-            speaker_length=speaker_length
+            speaker_length=speaker_length,
+            min_gap=min_gap
         )
         
         # 간섭 회피

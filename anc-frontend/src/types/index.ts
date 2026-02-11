@@ -58,6 +58,7 @@ export interface Design {
   vs_positions: Device[];
   spk_positions: Device[];
   controller_position?: { x: number; y: number };
+  speaker_gaps?: { top?: number; right?: number; bottom?: number; left?: number };
   design_version: number;
   is_approved: boolean;
   created_at: string;

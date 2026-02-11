@@ -34,7 +34,8 @@ def auto_design(house_id: int, request: AutoDesignRequest, db: Session = Depends
         obstacles=request.obstacles,
         offset=request.offset,
         speaker_width=survey.speaker_width or 130.0,
-        speaker_length=survey.speaker_length or 600.0
+        speaker_length=survey.speaker_length or 600.0,
+        min_gap=request.min_gap or 200.0  # 요청에서 받은 최소 스피커 간격 사용
     )
     
     # 기존 설계 확인
@@ -45,6 +46,7 @@ def auto_design(house_id: int, request: AutoDesignRequest, db: Session = Depends
         existing_design.vs_positions = design_result["vs_positions"]
         existing_design.spk_positions = design_result["spk_positions"]
         existing_design.controller_position = design_result["controller_position"]
+        existing_design.speaker_gaps = design_result["speaker_gaps"]
         existing_design.design_version += 1
         db.commit()
         db.refresh(existing_design)
@@ -52,18 +54,26 @@ def auto_design(house_id: int, request: AutoDesignRequest, db: Session = Depends
         # BOM 재계산
         update_bom(existing_design.design_id, db)
         
-        # speaker_gaps를 포함한 응답 생성
-        return {
-            **existing_design.__dict__,
-            "speaker_gaps": design_result["speaker_gaps"]
-        }
+        # 명시적으로 응답 생성
+        return DesignResponse(
+            design_id=existing_design.design_id,
+            house_id=existing_design.house_id,
+            vs_positions=existing_design.vs_positions,
+            spk_positions=existing_design.spk_positions,
+            controller_position=existing_design.controller_position,
+            design_version=existing_design.design_version,
+            is_approved=existing_design.is_approved,
+            created_at=existing_design.created_at,
+            speaker_gaps=design_result["speaker_gaps"]
+        )
     else:
         # 생성
         db_design = Design(
             house_id=house_id,
             vs_positions=design_result["vs_positions"],
             spk_positions=design_result["spk_positions"],
-            controller_position=design_result["controller_position"]
+            controller_position=design_result["controller_position"],
+            speaker_gaps=design_result["speaker_gaps"]
         )
         db.add(db_design)
         
@@ -76,11 +86,18 @@ def auto_design(house_id: int, request: AutoDesignRequest, db: Session = Depends
         # BOM 생성
         create_bom(db_design.design_id, db)
         
-        # speaker_gaps를 포함한 응답 생성
-        return {
-            **db_design.__dict__,
-            "speaker_gaps": design_result["speaker_gaps"]
-        }
+        # 명시적으로 응답 생성
+        return DesignResponse(
+            design_id=db_design.design_id,
+            house_id=db_design.house_id,
+            vs_positions=db_design.vs_positions,
+            spk_positions=db_design.spk_positions,
+            controller_position=db_design.controller_position,
+            design_version=db_design.design_version,
+            is_approved=db_design.is_approved,
+            created_at=db_design.created_at,
+            speaker_gaps=design_result["speaker_gaps"]
+        )
 
 
 @router.get("/houses/{house_id}/design", response_model=DesignResponse)
@@ -98,14 +115,22 @@ def get_design(house_id: int, db: Session = Depends(get_db)):
             width=survey.living_room_width,
             depth=survey.living_room_depth,
             speaker_width=survey.speaker_width or 130.0,
-            speaker_length=survey.speaker_length or 600.0
+            speaker_length=survey.speaker_length or 600.0,
+            min_gap=200.0
         )
         speaker_gaps = design_result.get("speaker_gaps", {})
     
-    return {
-        **design.__dict__,
-        "speaker_gaps": speaker_gaps
-    }
+    return DesignResponse(
+        design_id=design.design_id,
+        house_id=design.house_id,
+        vs_positions=design.vs_positions,
+        spk_positions=design.spk_positions,
+        controller_position=design.controller_position,
+        design_version=design.design_version,
+        is_approved=design.is_approved,
+        created_at=design.created_at,
+        speaker_gaps=speaker_gaps
+    )
 
 
 @router.put("/houses/{house_id}/design", response_model=DesignResponse)
@@ -138,14 +163,22 @@ def update_design(house_id: int, design_data: dict, db: Session = Depends(get_db
             width=survey.living_room_width,
             depth=survey.living_room_depth,
             speaker_width=survey.speaker_width or 130.0,
-            speaker_length=survey.speaker_length or 600.0
+            speaker_length=survey.speaker_length or 600.0,
+            min_gap=200.0
         )
         speaker_gaps = design_result.get("speaker_gaps", {})
     
-    return {
-        **design.__dict__,
-        "speaker_gaps": speaker_gaps
-    }
+    return DesignResponse(
+        design_id=design.design_id,
+        house_id=design.house_id,
+        vs_positions=design.vs_positions,
+        spk_positions=design.spk_positions,
+        controller_position=design.controller_position,
+        design_version=design.design_version,
+        is_approved=design.is_approved,
+        created_at=design.created_at,
+        speaker_gaps=speaker_gaps
+    )
 
 
 @router.get("/designs/{design_id}/bom", response_model=BOMResponse)

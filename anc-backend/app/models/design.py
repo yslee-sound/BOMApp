@@ -12,6 +12,7 @@ class Design(Base):
     vs_positions = Column(JSON, nullable=False)
     spk_positions = Column(JSON, nullable=False)
     controller_position = Column(JSON)
+    speaker_gaps = Column(JSON)  # 각 변의 스피커 간격 정보
     cable_routing = Column(JSON)
     design_version = Column(Integer, default=1)
     is_approved = Column(Boolean, default=False)

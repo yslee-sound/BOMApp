@@ -148,6 +148,7 @@ const DesignView: React.FC = () => {
               spkPositions={design.spk_positions}
               speakerLength={survey.speaker_length || 600}
               speakerWidth={survey.speaker_width || 130}
+              speakerGaps={design.speaker_gaps}
               onUpdatePositions={handleUpdatePositions}
             />
           </Box>

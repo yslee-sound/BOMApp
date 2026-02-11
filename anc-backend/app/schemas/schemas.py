@@ -139,3 +139,4 @@ class BOMResponse(BaseModel):
 class AutoDesignRequest(BaseModel):
     obstacles: Optional[List[dict]] = None
     offset: Optional[float] = 300
+    min_gap: Optional[float] = 200.0  # 최소 스피커 간격 (mm)
