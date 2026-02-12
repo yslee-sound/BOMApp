@@ -35,7 +35,12 @@ def auto_design(house_id: int, request: AutoDesignRequest, db: Session = Depends
         offset=request.offset,
         speaker_width=survey.speaker_width or 130.0,
         speaker_length=survey.speaker_length or 600.0,
-        min_gap=request.min_gap or 200.0  # 요청에서 받은 최소 스피커 간격 사용
+        min_gap=request.min_gap or 100.0,  # 요청에서 받은 최소 스피커 간격 사용
+        max_gap=request.max_gap or 600.0,  # 최대 스피커 간격
+        horizontal_count=request.horizontal_count,  # 가로 스피커 개수 (None이면 자동)
+        vertical_count=request.vertical_count,  # 세로 스피커 개수 (None이면 자동)
+        ceiling_width=survey.ceiling_width,  # 실사에서 입력한 우물천장 가로
+        ceiling_depth=survey.ceiling_depth  # 실사에서 입력한 우물천장 세로
     )
     
     # 기존 설계 확인
@@ -116,7 +121,9 @@ def get_design(house_id: int, db: Session = Depends(get_db)):
             depth=survey.living_room_depth,
             speaker_width=survey.speaker_width or 130.0,
             speaker_length=survey.speaker_length or 600.0,
-            min_gap=200.0
+            min_gap=100.0,
+            ceiling_width=survey.ceiling_width,
+            ceiling_depth=survey.ceiling_depth
         )
         speaker_gaps = design_result.get("speaker_gaps", {})
     

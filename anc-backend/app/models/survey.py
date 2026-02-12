@@ -11,6 +11,8 @@ class Survey(Base):
     house_id = Column(Integer, ForeignKey('houses.house_id', ondelete='CASCADE'), unique=True)
     living_room_width = Column(Float, nullable=False)
     living_room_depth = Column(Float, nullable=False)
+    ceiling_width = Column(Float)  # 우물천장 가로 (mm)
+    ceiling_depth = Column(Float)  # 우물천장 세로 (mm)
     ceiling_height = Column(Float)
     speaker_length = Column(Float, default=600.0)  # 스피커 길이 (mm)
     speaker_width = Column(Float, default=130.0)   # 스피커 폭 (mm)

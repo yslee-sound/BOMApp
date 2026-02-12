@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Stage, Layer, Rect, Circle, Text, Line } from 'react-konva';
-import { Box, FormControlLabel, Checkbox, FormGroup, Paper, Typography, TextField, Grid } from '@mui/material';
+import { Box, FormControlLabel, Checkbox, FormGroup, Paper, Typography, TextField, Grid, Button } from '@mui/material';
 import { Device } from '../types';
 
 interface FloorPlanEditorProps {
@@ -10,8 +10,18 @@ interface FloorPlanEditorProps {
   spkPositions: Device[];
   speakerLength?: number;  // 스피커 길이 (mm)
   speakerWidth?: number;   // 스피커 폭 (mm)
+  ceilingWidth?: number;   // 우물천장 가로 (mm)
+  ceilingDepth?: number;   // 우물천장 세로 (mm)
   speakerGaps?: { top?: number; right?: number; bottom?: number; left?: number };
   onUpdatePositions: (vs: Device[], spk: Device[]) => void;
+  onApplyChanges?: (params: {
+    width: number;
+    depth: number;
+    minGap: number;
+    maxGap: number;
+    horizontalCount: number;
+    verticalCount: number;
+  }) => void;
   scale?: number;
 }
 
@@ -22,8 +32,11 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   spkPositions,
   speakerLength = 600,
   speakerWidth = 130,
+  ceilingWidth,
+  ceilingDepth,
   speakerGaps,
   onUpdatePositions,
+  onApplyChanges,
   scale = 0.15,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -32,41 +45,47 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   const [showVS, setShowVS] = useState<boolean>(true);
   const [showSPK, setShowSPK] = useState<boolean>(true);
   
-  // 실시간 편집을 위한 로컬 상태
-  const [localWidth, setLocalWidth] = useState<number>(width);
-  const [localDepth, setLocalDepth] = useState<number>(depth);
-  const [localSpeakerLength, setLocalSpeakerLength] = useState<number>(speakerLength);
-  const [localSpeakerWidth, setLocalSpeakerWidth] = useState<number>(speakerWidth);
-  const [localMinGap, setLocalMinGap] = useState<number>(200); // 최소 스피커 간격
+  // 입력 필드용 임시 상태 (적용 버튼 누르기 전까지 도면에 반영되지 않음)
+  const [inputWidth, setInputWidth] = useState<number>(width);
+  const [inputDepth, setInputDepth] = useState<number>(depth);
+  const [inputMinGap, setInputMinGap] = useState<number>(100); // 최소 스피커 간격
+  const [inputMaxGap, setInputMaxGap] = useState<number>(600); // 최대 스피커 간격
+  const [inputHorizontalCount, setInputHorizontalCount] = useState<number>(2); // 가로 스피커 개수
+  const [inputVerticalCount, setInputVerticalCount] = useState<number>(3); // 세로 스피커 개수
 
-  const stageWidth = Math.max(800, localWidth * scale + 100);
-  const stageHeight = Math.max(600, localDepth * scale + 100);
+  // 도면 렌더링에는 props로 받은 값 사용 (적용된 값만 표시)
+  const stageWidth = Math.max(800, width * scale + 100);
+  const stageHeight = Math.max(600, depth * scale + 100);
   const offsetX = 50;
   const offsetY = 50;
 
-  // 우물천장 크기 계산 (로컬 값으로, 기본 비율 0.70 적용)
-  const aspectRatio = Math.max(localWidth, localDepth) / Math.min(localWidth, localDepth);
-  let ceilingRatio = 0.70; // 기본값, 추후 스피커 개수 기반으로 계산
+  // 우물천장 크기 계산 (실사 데이터에서 입력한 값 우선 사용)
+  let finalCeilingWidth: number;
+  let finalCeilingDepth: number;
   
-  const ceilingWidth = localWidth * ceilingRatio;
-  const ceilingDepth = localDepth * ceilingRatio;
-  const ceilingStartX = (localWidth - ceilingWidth) / 2;
-  const ceilingStartY = (localDepth - ceilingDepth) / 2;
+  if (ceilingWidth && ceilingDepth) {
+    // 실사에서 입력한 우물천장 크기 사용
+    finalCeilingWidth = ceilingWidth;
+    finalCeilingDepth = ceilingDepth;
+  } else {
+    // 자동 계산 (기본 비율 0.70 적용)
+    finalCeilingWidth = width * 0.70;
+    finalCeilingDepth = depth * 0.70;
+  }
+  
+  const ceilingStartX = (width - finalCeilingWidth) / 2;
+  const ceilingStartY = (depth - finalCeilingDepth) / 2;
 
   useEffect(() => {
     setLocalVS(vsPositions);
     setLocalSPK(spkPositions);
   }, [vsPositions, spkPositions]);
   
+  // props가 변경되면 입력 필드도 업데이트
   useEffect(() => {
-    setLocalWidth(width);
-    setLocalDepth(depth);
+    setInputWidth(width);
+    setInputDepth(depth);
   }, [width, depth]);
-  
-  useEffect(() => {
-    setLocalSpeakerLength(speakerLength);
-    setLocalSpeakerWidth(speakerWidth);
-  }, [speakerLength, speakerWidth]);
 
   const handleVSChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setShowVS(event.target.checked);
@@ -134,8 +153,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           <Rect
             x={offsetX}
             y={offsetY}
-            width={localWidth * scale}
-            height={localDepth * scale}
+            width={width * scale}
+            height={depth * scale}
             stroke="#000000"
             strokeWidth={2}
             fill="#f5f5f5"
@@ -146,7 +165,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
             points={[
               offsetX,
               offsetY - 20,
-              offsetX + localWidth * scale,
+              offsetX + width * scale,
               offsetY - 20,
             ]}
             stroke="#0066cc"
@@ -159,18 +178,18 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           />
           <Line
             points={[
-              offsetX + localWidth * scale,
+              offsetX + width * scale,
               offsetY - 25,
-              offsetX + localWidth * scale,
+              offsetX + width * scale,
               offsetY - 15,
             ]}
             stroke="#0066cc"
             strokeWidth={1}
           />
           <Text
-            x={offsetX + (localWidth * scale) / 2 - 30}
+            x={offsetX + (width * scale) / 2 - 30}
             y={offsetY - 35}
-            text={`${Math.round(localWidth)} mm`}
+            text={`${Math.round(width)} mm`}
             fontSize={14}
             fill="#0066cc"
             fontStyle="bold"
@@ -182,7 +201,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
               offsetX - 20,
               offsetY,
               offsetX - 20,
-              offsetY + localDepth * scale,
+              offsetY + depth * scale,
             ]}
             stroke="#0066cc"
             strokeWidth={1}
@@ -195,17 +214,17 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           <Line
             points={[
               offsetX - 25,
-              offsetY + localDepth * scale,
+              offsetY + depth * scale,
               offsetX - 15,
-              offsetY + localDepth * scale,
+              offsetY + depth * scale,
             ]}
             stroke="#0066cc"
             strokeWidth={1}
           />
           <Text
             x={offsetX - 38}
-            y={offsetY + (localDepth * scale) / 2 - 7}
-            text={`${Math.round(localDepth)} mm`}
+            y={offsetY + (depth * scale) / 2 - 7}
+            text={`${Math.round(depth)} mm`}
             fontSize={14}
             fill="#0066cc"
             fontStyle="bold"
@@ -217,10 +236,10 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           <React.Fragment key={`grid-${i}`}>
             <Line
               points={[
-                offsetX + (localWidth * scale * i) / 10,
+                offsetX + (width * scale * i) / 10,
                 offsetY,
-                offsetX + (localWidth * scale * i) / 10,
-                offsetY + localDepth * scale,
+                offsetX + (width * scale * i) / 10,
+                offsetY + depth * scale,
               ]}
               stroke="#e0e0e0"
               strokeWidth={1}
@@ -228,9 +247,9 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
             <Line
               points={[
                 offsetX,
-                offsetY + (localDepth * scale * i) / 10,
-                offsetX + localWidth * scale,
-                offsetY + (localDepth * scale * i) / 10,
+                offsetY + (depth * scale * i) / 10,
+                offsetX + width * scale,
+                offsetY + (depth * scale * i) / 10,
               ]}
               stroke="#e0e0e0"
               strokeWidth={1}
@@ -242,8 +261,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
         <Rect
           x={offsetX + ceilingStartX * scale}
           y={offsetY + ceilingStartY * scale}
-          width={ceilingWidth * scale}
-          height={ceilingDepth * scale}
+          width={finalCeilingWidth * scale}
+          height={finalCeilingDepth * scale}
           stroke="#FF6B6B"
           strokeWidth={2}
           dash={[10, 5]}
@@ -263,7 +282,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           points={[
             offsetX + ceilingStartX * scale,
             offsetY + ceilingStartY * scale + 25,
-            offsetX + (ceilingStartX + ceilingWidth) * scale,
+            offsetX + (ceilingStartX + finalCeilingWidth) * scale,
             offsetY + ceilingStartY * scale + 25,
           ]}
           stroke="#FF6B6B"
@@ -281,18 +300,18 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
         />
         <Line
           points={[
-            offsetX + (ceilingStartX + ceilingWidth) * scale,
+            offsetX + (ceilingStartX + finalCeilingWidth) * scale,
             offsetY + ceilingStartY * scale + 20,
-            offsetX + (ceilingStartX + ceilingWidth) * scale,
+            offsetX + (ceilingStartX + finalCeilingWidth) * scale,
             offsetY + ceilingStartY * scale + 30,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Text
-          x={offsetX + (ceilingStartX + ceilingWidth / 2) * scale - 35}
+          x={offsetX + (ceilingStartX + finalCeilingWidth / 2) * scale - 35}
           y={offsetY + ceilingStartY * scale + 10}
-          text={`${Math.round(ceilingWidth)} mm`}
+          text={`${Math.round(finalCeilingWidth)} mm`}
           fontSize={12}
           fill="#FF6B6B"
           fontStyle="bold"
@@ -304,7 +323,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
             offsetX + ceilingStartX * scale + 25,
             offsetY + ceilingStartY * scale,
             offsetX + ceilingStartX * scale + 25,
-            offsetY + (ceilingStartY + ceilingDepth) * scale,
+            offsetY + (ceilingStartY + finalCeilingDepth) * scale,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
@@ -322,17 +341,17 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
         <Line
           points={[
             offsetX + ceilingStartX * scale + 20,
-            offsetY + (ceilingStartY + ceilingDepth) * scale,
+            offsetY + (ceilingStartY + finalCeilingDepth) * scale,
             offsetX + ceilingStartX * scale + 30,
-            offsetY + (ceilingStartY + ceilingDepth) * scale,
+            offsetY + (ceilingStartY + finalCeilingDepth) * scale,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Text
           x={offsetX + ceilingStartX * scale + 10}
-          y={offsetY + (ceilingStartY + ceilingDepth / 2) * scale - 7}
-          text={`${Math.round(ceilingDepth)} mm`}
+          y={offsetY + (ceilingStartY + finalCeilingDepth / 2) * scale - 7}
+          text={`${Math.round(finalCeilingDepth)} mm`}
           fontSize={12}
           fill="#FF6B6B"
           fontStyle="bold"
@@ -367,8 +386,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
         {showSPK && localSPK.map((spk) => {
           // 스피커 방향에 따른 크기 결정
           const isHorizontal = spk.edge === 'top' || spk.edge === 'bottom';
-          const rectWidth = isHorizontal ? localSpeakerLength * scale : localSpeakerWidth * scale;
-          const rectHeight = isHorizontal ? localSpeakerWidth * scale : localSpeakerLength * scale;
+          const rectWidth = isHorizontal ? speakerLength * scale : speakerWidth * scale;
+          const rectHeight = isHorizontal ? speakerWidth * scale : speakerLength * scale;
           
           return (
             <React.Fragment key={`spk-${spk.id}`}>
@@ -417,7 +436,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
               if (topSpeakers.length > 0) {
                 const firstSpk = topSpeakers[0];
                 // 스피커 왼쪽 시작점
-                const speakerLeftStart = firstSpk.x - localSpeakerLength / 2;
+                const speakerLeftStart = firstSpk.x - speakerLength / 2;
                 return (
                   <Text
                     x={offsetX + speakerLeftStart * scale}
@@ -437,7 +456,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
               if (rightSpeakers.length > 0) {
                 const firstSpk = rightSpeakers[0];
                 // 스피커 위쪽 시작점 (rotation 90도이므로)
-                const speakerTopStart = firstSpk.y - localSpeakerLength / 2;
+                const speakerTopStart = firstSpk.y - speakerLength / 2;
                 return (
                   <Text
                     x={offsetX + firstSpk.x * scale + 25}
@@ -469,8 +488,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
               fullWidth
               label="거실 가로 (mm)"
               type="number"
-              value={localWidth}
-              onChange={(e) => setLocalWidth(Number(e.target.value))}
+              value={inputWidth}
+              onChange={(e) => setInputWidth(Number(e.target.value))}
               sx={{ mb: 2 }}
               size="small"
             />
@@ -479,28 +498,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
               fullWidth
               label="거실 세로 (mm)"
               type="number"
-              value={localDepth}
-              onChange={(e) => setLocalDepth(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-            />
-            
-            <TextField
-              fullWidth
-              label="스피커 길이 (mm)"
-              type="number"
-              value={localSpeakerLength}
-              onChange={(e) => setLocalSpeakerLength(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-            />
-            
-            <TextField
-              fullWidth
-              label="스피커 폭 (mm)"
-              type="number"
-              value={localSpeakerWidth}
-              onChange={(e) => setLocalSpeakerWidth(Number(e.target.value))}
+              value={inputDepth}
+              onChange={(e) => setInputDepth(Number(e.target.value))}
               sx={{ mb: 2 }}
               size="small"
             />
@@ -509,21 +508,73 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
               fullWidth
               label="최소 스피커 간격 (mm)"
               type="number"
-              value={localMinGap}
-              onChange={(e) => setLocalMinGap(Number(e.target.value))}
+              value={inputMinGap}
+              onChange={(e) => setInputMinGap(Number(e.target.value))}
               sx={{ mb: 2 }}
               size="small"
               helperText="스피커 사이 최소 간격"
             />
             
+            <TextField
+              fullWidth
+              label="최대 스피커 간격 (mm)"
+              type="number"
+              value={inputMaxGap}
+              onChange={(e) => setInputMaxGap(Number(e.target.value))}
+              sx={{ mb: 2 }}
+              size="small"
+              helperText="스피커 사이 최대 간격"
+            />
+            
+            <TextField
+              fullWidth
+              label="가로 스피커 개수"
+              type="number"
+              value={inputHorizontalCount}
+              onChange={(e) => setInputHorizontalCount(Number(e.target.value))}
+              sx={{ mb: 2 }}
+              size="small"
+              helperText="상/하단 스피커 개수"
+            />
+            
+            <TextField
+              fullWidth
+              label="세로 스피커 개수"
+              type="number"
+              value={inputVerticalCount}
+              onChange={(e) => setInputVerticalCount(Number(e.target.value))}
+              sx={{ mb: 2 }}
+              size="small"
+              helperText="좌/우측 스피커 개수"
+            />
+            
+            {onApplyChanges && (
+              <Button
+                fullWidth
+                variant="contained"
+                color="primary"
+                onClick={() => onApplyChanges({
+                  width: inputWidth,
+                  depth: inputDepth,
+                  minGap: inputMinGap,
+                  maxGap: inputMaxGap,
+                  horizontalCount: inputHorizontalCount,
+                  verticalCount: inputVerticalCount,
+                })}
+                sx={{ mb: 2 }}
+              >
+                적용
+              </Button>
+            )}
+            
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
               현재 우물천장 크기:
             </Typography>
             <Typography variant="body2">
-              가로: {Math.round(ceilingWidth)} mm
+              가로: {Math.round(finalCeilingWidth)} mm
             </Typography>
             <Typography variant="body2">
-              세로: {Math.round(ceilingDepth)} mm
+              세로: {Math.round(finalCeilingDepth)} mm
             </Typography>
           </Paper>
         </Grid>

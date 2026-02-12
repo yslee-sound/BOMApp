@@ -48,6 +48,8 @@ class HouseResponse(HouseBase):
 class SurveyBase(BaseModel):
     living_room_width: float
     living_room_depth: float
+    ceiling_width: Optional[float] = None  # 우물천장 가로 (mm)
+    ceiling_depth: Optional[float] = None  # 우물천장 세로 (mm)
     ceiling_height: Optional[float] = None
     speaker_length: Optional[float] = 600.0  # 스피커 길이 (mm)
     speaker_width: Optional[float] = 130.0   # 스피커 폭 (mm)
@@ -139,4 +141,7 @@ class BOMResponse(BaseModel):
 class AutoDesignRequest(BaseModel):
     obstacles: Optional[List[dict]] = None
     offset: Optional[float] = 300
-    min_gap: Optional[float] = 200.0  # 최소 스피커 간격 (mm)
+    min_gap: Optional[float] = 100.0  # 최소 스피커 간격 (mm)
+    max_gap: Optional[float] = 600.0  # 최대 스피커 간격 (mm)
+    horizontal_count: Optional[int] = None  # 가로 스피커 개수 (None이면 자동 계산)
+    vertical_count: Optional[int] = None  # 세로 스피커 개수 (None이면 자동 계산)

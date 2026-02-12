@@ -23,6 +23,8 @@ const SurveyForm: React.FC = () => {
   const [formData, setFormData] = useState({
     living_room_width: '',
     living_room_depth: '',
+    ceiling_width: '',
+    ceiling_depth: '',
     ceiling_height: '',
     speaker_length: '600',
     speaker_width: '130',
@@ -58,6 +60,8 @@ const SurveyForm: React.FC = () => {
       setFormData({
         living_room_width: survey.living_room_width.toString(),
         living_room_depth: survey.living_room_depth.toString(),
+        ceiling_width: survey.ceiling_width?.toString() || '',
+        ceiling_depth: survey.ceiling_depth?.toString() || '',
         ceiling_height: survey.ceiling_height?.toString() || '',
         speaker_length: survey.speaker_length?.toString() || '600',
         speaker_width: survey.speaker_width?.toString() || '130',
@@ -83,6 +87,8 @@ const SurveyForm: React.FC = () => {
       const surveyData = {
         living_room_width: parseFloat(formData.living_room_width),
         living_room_depth: parseFloat(formData.living_room_depth),
+        ceiling_width: formData.ceiling_width ? parseFloat(formData.ceiling_width) : undefined,
+        ceiling_depth: formData.ceiling_depth ? parseFloat(formData.ceiling_depth) : undefined,
         ceiling_height: formData.ceiling_height ? parseFloat(formData.ceiling_height) : undefined,
         speaker_length: formData.speaker_length ? parseFloat(formData.speaker_length) : 600,
         speaker_width: formData.speaker_width ? parseFloat(formData.speaker_width) : 130,
@@ -151,6 +157,26 @@ const SurveyForm: React.FC = () => {
                 value={formData.living_room_depth}
                 onChange={(e) => setFormData({ ...formData, living_room_depth: e.target.value })}
                 helperText="예: 3600"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="우물천장 가로 (mm)"
+                type="number"
+                value={formData.ceiling_width}
+                onChange={(e) => setFormData({ ...formData, ceiling_width: e.target.value })}
+                helperText="선택사항"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="우물천장 세로 (mm)"
+                type="number"
+                value={formData.ceiling_depth}
+                onChange={(e) => setFormData({ ...formData, ceiling_depth: e.target.value })}
+                helperText="선택사항"
               />
             </Grid>
             <Grid item xs={12} sm={6}>

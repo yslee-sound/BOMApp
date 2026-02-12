@@ -12,7 +12,7 @@ import {
   Tab,
 } from '@mui/material';
 import { ArrowBack, Save as SaveIcon } from '@mui/icons-material';
-import { getHouse, getDesign, getSurvey, updateDesign, getBOM } from '../services/api';
+import { getHouse, getDesign, getSurvey, updateDesign, getBOM, autoDesign, createOrUpdateSurvey } from '../services/api';
 import { House, Design, Survey, BOM as BOMType } from '../types';
 import FloorPlanEditor from './FloorPlanEditor';
 import BOMTable from './BOMTable';
@@ -102,6 +102,49 @@ const DesignView: React.FC = () => {
     }
   };
 
+  const handleApplyChanges = async (params: {
+    width: number;
+    depth: number;
+    minGap: number;
+    maxGap: number;
+    horizontalCount: number;
+    verticalCount: number;
+  }) => {
+    if (!survey) return;
+
+    try {
+      // Survey 데이터 업데이트 (크기 정보만)
+      await createOrUpdateSurvey(Number(houseId), {
+        ...survey,
+        living_room_width: params.width,
+        living_room_depth: params.depth,
+      });
+
+      // 자동 설계 재실행
+      const designRes = await autoDesign(Number(houseId), {
+        min_gap: params.minGap,
+        max_gap: params.maxGap,
+        horizontal_count: params.horizontalCount,
+        vertical_count: params.verticalCount,
+      });
+
+      setDesign(designRes.data);
+
+      // BOM 재조회
+      const bomRes = await getBOM(designRes.data.design_id);
+      setBom(bomRes.data);
+
+      // Survey 데이터 재조회
+      const surveyRes = await getSurvey(Number(houseId));
+      setSurvey(surveyRes.data);
+
+      alert('변경사항이 적용되었습니다.');
+    } catch (error) {
+      console.error('Failed to apply changes:', error);
+      alert('변경사항 적용에 실패했습니다.');
+    }
+  };
+
   if (!house || !design || !survey) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -148,8 +191,11 @@ const DesignView: React.FC = () => {
               spkPositions={design.spk_positions}
               speakerLength={survey.speaker_length || 600}
               speakerWidth={survey.speaker_width || 130}
+              ceilingWidth={survey.ceiling_width}
+              ceilingDepth={survey.ceiling_depth}
               speakerGaps={design.speaker_gaps}
               onUpdatePositions={handleUpdatePositions}
+              onApplyChanges={handleApplyChanges}
             />
           </Box>
           <Box sx={{ mt: 2, p: 2 }}>
