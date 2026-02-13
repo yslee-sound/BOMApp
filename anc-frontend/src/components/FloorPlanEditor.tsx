@@ -47,6 +47,13 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   const [showVS, setShowVS] = useState<boolean>(true);
   const [showSPK, setShowSPK] = useState<boolean>(true);
   
+  // 최대 스피커 개수 계산 함수
+  const calculateMaxSpeakerCount = (ceilingSize: number, minGap: number, speakerLen: number): number => {
+    // 공식: count <= (ceilingSize - minGap) / (speakerLen + minGap)
+    const maxCount = Math.floor((ceilingSize - minGap) / (speakerLen + minGap));
+    return Math.max(1, maxCount); // 최소 1개
+  };
+  
   // 입력 필드용 임시 상태 (적용 버튼 누르기 전까지 도면에 반영되지 않음)
   const [inputWidth, setInputWidth] = useState<number>(width);
   const [inputDepth, setInputDepth] = useState<number>(depth);
@@ -55,7 +62,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   const [inputMinGap, setInputMinGap] = useState<number>(100); // 최소 스피커 간격
   const [inputMaxGap, setInputMaxGap] = useState<number>(600); // 최대 스피커 간격
   const [inputHorizontalCount, setInputHorizontalCount] = useState<number>(2); // 가로 스피커 개수
-  const [inputVerticalCount, setInputVerticalCount] = useState<number>(3); // 세로 스피커 개수
+  const [inputVerticalCount, setInputVerticalCount] = useState<number>(2); // 세로 스피커 개수
 
   // 도면 렌더링에는 props로 받은 값 사용 (적용된 값만 표시)
   const stageWidth = Math.max(800, width * scale + 100);
@@ -92,6 +99,22 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
     setInputCeilingWidth(ceilingWidth || width * 0.7);
     setInputCeilingDepth(ceilingDepth || depth * 0.7);
   }, [width, depth, ceilingWidth, ceilingDepth]);
+
+  // 우물천장 크기나 최소 간격 변경 시 스피커 개수 검증
+  useEffect(() => {
+    const maxHorizontal = calculateMaxSpeakerCount(inputCeilingWidth, inputMinGap, speakerLength);
+    const maxVertical = calculateMaxSpeakerCount(inputCeilingDepth, inputMinGap, speakerLength);
+    
+    // 현재 입력된 개수가 최대값을 초과하면 조정
+    if (inputHorizontalCount > maxHorizontal) {
+      setInputHorizontalCount(maxHorizontal);
+      console.warn(`가로 스피커 개수가 ${maxHorizontal}개로 조정되었습니다.`);
+    }
+    if (inputVerticalCount > maxVertical) {
+      setInputVerticalCount(maxVertical);
+      console.warn(`세로 스피커 개수가 ${maxVertical}개로 조정되었습니다.`);
+    }
+  }, [inputCeilingWidth, inputCeilingDepth, inputMinGap, speakerLength]);
 
   const handleVSChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setShowVS(event.target.checked);
@@ -151,7 +174,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
       </Paper>
       
       <Grid container spacing={2}>
-        <Grid item xs={12} md={9}>
+        <Grid item xs={12} md={8}>
           <Paper sx={{ p: 2, bgcolor: '#fafafa' }}>
       <Stage width={stageWidth} height={stageHeight}>
         <Layer>
@@ -484,95 +507,117 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           </Paper>
         </Grid>
         
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               편집
             </Typography>
             
-            <TextField
-              fullWidth
-              label="거실 가로 (mm)"
-              type="number"
-              value={inputWidth}
-              onChange={(e) => setInputWidth(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-            />
+            <Grid container spacing={1} sx={{ mb: 2 }}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="거실 가로 (mm)"
+                  type="number"
+                  value={inputWidth}
+                  onChange={(e) => setInputWidth(Number(e.target.value))}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="거실 세로 (mm)"
+                  type="number"
+                  value={inputDepth}
+                  onChange={(e) => setInputDepth(Number(e.target.value))}
+                  size="small"
+                />
+              </Grid>
+            </Grid>
             
-            <TextField
-              fullWidth
-              label="거실 세로 (mm)"
-              type="number"
-              value={inputDepth}
-              onChange={(e) => setInputDepth(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-            />
+            <Grid container spacing={1} sx={{ mb: 2 }}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="우물천장 가로 (mm)"
+                  type="number"
+                  value={inputCeilingWidth}
+                  onChange={(e) => setInputCeilingWidth(Number(e.target.value))}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="우물천장 세로 (mm)"
+                  type="number"
+                  value={inputCeilingDepth}
+                  onChange={(e) => setInputCeilingDepth(Number(e.target.value))}
+                  size="small"
+                />
+              </Grid>
+            </Grid>
             
-            <TextField
-              fullWidth
-              label="우물천장 가로 (mm)"
-              type="number"
-              value={inputCeilingWidth}
-              onChange={(e) => setInputCeilingWidth(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-            />
+            <Grid container spacing={1} sx={{ mb: 2 }}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="최소 스피커 간격 (mm)"
+                  type="number"
+                  value={inputMinGap}
+                  onChange={(e) => setInputMinGap(Number(e.target.value))}
+                  size="small"
+                  helperText="스피커 최소 간격"
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="최대 스피커 간격 (mm)"
+                  type="number"
+                  value={inputMaxGap}
+                  onChange={(e) => setInputMaxGap(Number(e.target.value))}
+                  size="small"
+                  helperText="스피커 최대 간격"
+                />
+              </Grid>
+            </Grid>
             
-            <TextField
-              fullWidth
-              label="우물천장 세로 (mm)"
-              type="number"
-              value={inputCeilingDepth}
-              onChange={(e) => setInputCeilingDepth(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-            />
-            
-            <TextField
-              fullWidth
-              label="최소 스피커 간격 (mm)"
-              type="number"
-              value={inputMinGap}
-              onChange={(e) => setInputMinGap(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-              helperText="스피커 사이 최소 간격"
-            />
-            
-            <TextField
-              fullWidth
-              label="최대 스피커 간격 (mm)"
-              type="number"
-              value={inputMaxGap}
-              onChange={(e) => setInputMaxGap(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-              helperText="스피커 사이 최대 간격"
-            />
-            
-            <TextField
-              fullWidth
-              label="가로 스피커 개수"
-              type="number"
-              value={inputHorizontalCount}
-              onChange={(e) => setInputHorizontalCount(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-              helperText="상/하단 스피커 개수"
-            />
-            
-            <TextField
-              fullWidth
-              label="세로 스피커 개수"
-              type="number"
-              value={inputVerticalCount}
-              onChange={(e) => setInputVerticalCount(Number(e.target.value))}
-              sx={{ mb: 2 }}
-              size="small"
-              helperText="좌/우측 스피커 개수"
-            />
+            <Grid container spacing={1} sx={{ mb: 2 }}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="가로 스피커 개수"
+                  type="number"
+                  value={inputHorizontalCount}
+                  onChange={(e) => {
+                    const maxCount = calculateMaxSpeakerCount(inputCeilingWidth, inputMinGap, speakerLength);
+                    const value = Math.min(Number(e.target.value), maxCount);
+                    setInputHorizontalCount(Math.max(1, value));
+                  }}
+                  size="small"
+                  helperText={`최대: ${calculateMaxSpeakerCount(inputCeilingWidth, inputMinGap, speakerLength)}개`}
+                  inputProps={{ min: 1, max: calculateMaxSpeakerCount(inputCeilingWidth, inputMinGap, speakerLength) }}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="세로 스피커 개수"
+                  type="number"
+                  value={inputVerticalCount}
+                  onChange={(e) => {
+                    const maxCount = calculateMaxSpeakerCount(inputCeilingDepth, inputMinGap, speakerLength);
+                    const value = Math.min(Number(e.target.value), maxCount);
+                    setInputVerticalCount(Math.max(1, value));
+                  }}
+                  size="small"
+                  helperText={`최대: ${calculateMaxSpeakerCount(inputCeilingDepth, inputMinGap, speakerLength)}개`}
+                  inputProps={{ min: 1, max: calculateMaxSpeakerCount(inputCeilingDepth, inputMinGap, speakerLength) }}
+                />
+              </Grid>
+            </Grid>
             
             {onApplyChanges && (
               <Button

@@ -105,9 +105,27 @@ class LayoutService:
         max_width_count = int((initial_ceiling_width - min_gap) / (speaker_length + min_gap))
         max_depth_count = int((initial_ceiling_depth - min_gap) / (speaker_length + min_gap))
         
-        # 최소 2개는 배치
-        max_width_count = max(2, max_width_count)
-        max_depth_count = max(2, max_depth_count)
+        # 최소 2개는 배치 (단, 물리적으로 불가능하면 1개)
+        if max_width_count < 2:
+            # 2개도 안 들어가는지 확인
+            required_for_2 = min_gap * 3 + speaker_length * 2
+            if initial_ceiling_width >= required_for_2:
+                max_width_count = 2
+            else:
+                max_width_count = max(1, max_width_count)
+        else:
+            max_width_count = max(2, max_width_count)
+            
+        if max_depth_count < 2:
+            required_for_2 = min_gap * 3 + speaker_length * 2
+            if initial_ceiling_depth >= required_for_2:
+                max_depth_count = 2
+            else:
+                max_depth_count = max(1, max_depth_count)
+        else:
+            max_depth_count = max(2, max_depth_count)
+        
+        print(f"[DEBUG] Max speaker counts based on ceiling size - Width: {max_width_count}, Depth: {max_depth_count}")
         
         # total_speakers가 None이면 최대 개수로 자동 계산
         if total_speakers is None:
@@ -120,13 +138,20 @@ class LayoutService:
         # 최소 8개는 배치
         total_speakers = max(8, total_speakers)
         
-        # 사용자가 지정한 개수를 그대로 사용 (항상 입력된 값 우선)
+        # 사용자가 지정한 개수를 그대로 사용 (항상 입력된 값 우선, 단 최대 개수 제한)
         if horizontal_count is not None and vertical_count is not None:
-            # 입력된 값 그대로 사용 (최소 2개만 보장)
-            top_count = max(2, horizontal_count)
+            # 입력된 값 사용하되 우물천장 크기에 배치 가능한 최대 개수로 제한
+            top_count = min(max(1, horizontal_count), max_width_count)
             bottom_count = top_count
-            left_count = max(2, vertical_count)
+            left_count = min(max(1, vertical_count), max_depth_count)
             right_count = left_count
+            
+            # 입력값이 최대값을 초과하면 로그 출력
+            if horizontal_count > max_width_count:
+                print(f"[WARNING] Horizontal count {horizontal_count} exceeds maximum {max_width_count}. Adjusted to {max_width_count}.")
+            if vertical_count > max_depth_count:
+                print(f"[WARNING] Vertical count {vertical_count} exceeds maximum {max_depth_count}. Adjusted to {max_depth_count}.")
+            
             # 수동 지정 시 total_speakers 재계산
             total_speakers = top_count + bottom_count + left_count + right_count
         else:
