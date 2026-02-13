@@ -481,7 +481,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
         <Grid item xs={12} md={3}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              실시간 편집
+              편집
             </Typography>
             
             <TextField
