@@ -40,7 +40,9 @@ def auto_design(house_id: int, request: AutoDesignRequest, db: Session = Depends
         horizontal_count=request.horizontal_count,  # 가로 스피커 개수 (None이면 자동)
         vertical_count=request.vertical_count,  # 세로 스피커 개수 (None이면 자동)
         ceiling_width=survey.ceiling_width,  # 실사에서 입력한 우물천장 가로
-        ceiling_depth=survey.ceiling_depth  # 실사에서 입력한 우물천장 세로
+        ceiling_depth=survey.ceiling_depth,  # 실사에서 입력한 우물천장 세로
+        ceiling_start_x=survey.ceiling_start_x,  # 우물천장 시작 X 좌표
+        ceiling_start_y=survey.ceiling_start_y  # 우물천장 시작 Y 좌표
     )
     
     # 기존 설계 확인

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Circle, Text, Line } from 'react-konva';
 import { Box, FormControlLabel, Checkbox, FormGroup, Paper, Typography, TextField, Grid, Button } from '@mui/material';
 import { Device } from '../types';
@@ -12,6 +12,8 @@ interface FloorPlanEditorProps {
   speakerWidth?: number;   // 스피커 폭 (mm)
   ceilingWidth?: number;   // 우물천장 가로 (mm)
   ceilingDepth?: number;   // 우물천장 세로 (mm)
+  ceilingStartX?: number;  // 우물천장 시작 X 좌표 (mm)
+  ceilingStartY?: number;  // 우물천장 시작 Y 좌표 (mm)
   speakerGaps?: { top?: number; right?: number; bottom?: number; left?: number };
   onUpdatePositions: (vs: Device[], spk: Device[]) => void;
   onApplyChanges?: (params: {
@@ -19,6 +21,8 @@ interface FloorPlanEditorProps {
     depth: number;
     ceilingWidth: number;
     ceilingDepth: number;
+    ceilingStartX: number;
+    ceilingStartY: number;
     minGap: number;
     maxGap: number;
     horizontalCount: number;
@@ -36,6 +40,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   speakerWidth = 130,
   ceilingWidth,
   ceilingDepth,
+  ceilingStartX,
+  ceilingStartY,
   speakerGaps,
   onUpdatePositions,
   onApplyChanges,
@@ -46,6 +52,15 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   const [localSPK, setLocalSPK] = useState<Device[]>(spkPositions);
   const [showVS, setShowVS] = useState<boolean>(true);
   const [showSPK, setShowSPK] = useState<boolean>(true);
+  
+  // 스피커 커스텀 이름 저장 (id -> 이름)
+  const [speakerNames, setSpeakerNames] = useState<Map<number, string>>(new Map());
+  
+  // 숨김 스피커 ID 저장
+  const [hiddenSpeakers, setHiddenSpeakers] = useState<Set<number>>(new Set());
+  
+  // Stage ref for keyboard events
+  const stageRef = useRef<any>(null);
   
   // 최대 스피커 개수 계산 함수
   const calculateMaxSpeakerCount = (ceilingSize: number, minGap: number, speakerLen: number): number => {
@@ -59,6 +74,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   const [inputDepth, setInputDepth] = useState<number>(depth);
   const [inputCeilingWidth, setInputCeilingWidth] = useState<number>(ceilingWidth || width * 0.7);
   const [inputCeilingDepth, setInputCeilingDepth] = useState<number>(ceilingDepth || depth * 0.7);
+  const [inputCeilingStartX, setInputCeilingStartX] = useState<number>(ceilingStartX ?? (width - (ceilingWidth || width * 0.7)) / 2);
+  const [inputCeilingStartY, setInputCeilingStartY] = useState<number>(ceilingStartY ?? (depth - (ceilingDepth || depth * 0.7)) / 2);
   const [inputMinGap, setInputMinGap] = useState<number>(100); // 최소 스피커 간격
   const [inputMaxGap, setInputMaxGap] = useState<number>(600); // 최대 스피커 간격
   const [inputHorizontalCount, setInputHorizontalCount] = useState<number>(2); // 가로 스피커 개수
@@ -84,21 +101,55 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
     finalCeilingDepth = depth * 0.70;
   }
   
-  const ceilingStartX = (width - finalCeilingWidth) / 2;
-  const ceilingStartY = (depth - finalCeilingDepth) / 2;
+  // 우물천장 시작점 계산 (props에서 받거나 중앙 배치)
+  const finalCeilingStartX = ceilingStartX ?? (width - finalCeilingWidth) / 2;
+  const finalCeilingStartY = ceilingStartY ?? (depth - finalCeilingDepth) / 2;
 
   useEffect(() => {
     setLocalVS(vsPositions);
     setLocalSPK(spkPositions);
   }, [vsPositions, spkPositions]);
   
+  // 키보드 이벤트 핸들러: 'h' 키로 스피커 숨기기/보이기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'h' || e.key === 'H') {
+        if (selectedId && selectedId.startsWith('spk-')) {
+          const speakerId = parseInt(selectedId.replace('spk-', ''));
+          setHiddenSpeakers(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(speakerId)) {
+              newSet.delete(speakerId);
+              console.log(`스피커 ${speakerId} 표시`);
+            } else {
+              newSet.add(speakerId);
+              console.log(`스피커 ${speakerId} 숨김`);
+            }
+            return newSet;
+          });
+          // 숨긴 후 선택 해제
+          setSelectedId(null);
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedId]);
+  
   // props가 변경되면 입력 필드도 업데이트
   useEffect(() => {
     setInputWidth(width);
     setInputDepth(depth);
-    setInputCeilingWidth(ceilingWidth || width * 0.7);
-    setInputCeilingDepth(ceilingDepth || depth * 0.7);
-  }, [width, depth, ceilingWidth, ceilingDepth]);
+    const newCeilingWidth = ceilingWidth || width * 0.7;
+    const newCeilingDepth = ceilingDepth || depth * 0.7;
+    setInputCeilingWidth(newCeilingWidth);
+    setInputCeilingDepth(newCeilingDepth);
+    setInputCeilingStartX(ceilingStartX ?? (width - newCeilingWidth) / 2);
+    setInputCeilingStartY(ceilingStartY ?? (depth - newCeilingDepth) / 2);
+  }, [width, depth, ceilingWidth, ceilingDepth, ceilingStartX, ceilingStartY]);
 
   // 우물천장 크기나 최소 간격 변경 시 스피커 개수 검증
   useEffect(() => {
@@ -143,6 +194,28 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
     }
   };
 
+  const handleSpeakerNameEdit = (speakerId: number) => {
+    const currentName = speakerNames.get(speakerId) || `S${speakerId}`;
+    const newName = prompt('스피커 이름 입력:', currentName);
+    
+    if (newName !== null && newName.trim() !== '') {
+      setSpeakerNames(new Map(speakerNames.set(speakerId, newName.trim())));
+    }
+  };
+
+  const getSpeakerName = (speakerId: number): string => {
+    return speakerNames.get(speakerId) || `S${speakerId}`;
+  };
+
+  const formatSpeakerName = (speakerId: number, isVertical: boolean): string => {
+    const name = getSpeakerName(speakerId);
+    // 세로변(좌/우측)인 경우 각 글자마다 줄바꿈
+    if (isVertical) {
+      return name.split('').join('\n');
+    }
+    return name;
+  };
+
   return (
     <Box>
       <Paper elevation={2} sx={{ mb: 2, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -176,7 +249,12 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 2, bgcolor: '#fafafa' }}>
-      <Stage width={stageWidth} height={stageHeight}>
+      <Stage 
+        width={stageWidth} 
+        height={stageHeight}
+        ref={stageRef}
+        tabIndex={1}
+      >
         <Layer>
           {/* 거실 외곽선 */}
           <Rect
@@ -288,8 +366,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
 
         {/* 우물천장 영역 */}
         <Rect
-          x={offsetX + ceilingStartX * scale}
-          y={offsetY + ceilingStartY * scale}
+          x={offsetX + finalCeilingStartX * scale}
+          y={offsetY + finalCeilingStartY * scale}
           width={finalCeilingWidth * scale}
           height={finalCeilingDepth * scale}
           stroke="#FF6B6B"
@@ -298,10 +376,26 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           fill="rgba(255, 107, 107, 0.05)"
         />
         <Text
-          x={offsetX + ceilingStartX * scale + 10}
-          y={offsetY + ceilingStartY * scale + 10}
+          x={offsetX + finalCeilingStartX * scale + 10}
+          y={offsetY + finalCeilingStartY * scale + 10}
           text="우물천장"
           fontSize={12}
+          fill="#FF6B6B"
+          fontStyle="bold"
+        />
+
+        {/* 우물천장 시작점 좌표 표시 */}
+        <Circle
+          x={offsetX + finalCeilingStartX * scale}
+          y={offsetY + finalCeilingStartY * scale}
+          radius={4}
+          fill="#FF6B6B"
+        />
+        <Text
+          x={offsetX + finalCeilingStartX * scale - 60}
+          y={offsetY + finalCeilingStartY * scale - 25}
+          text={`시작점 (${Math.round(finalCeilingStartX)}, ${Math.round(finalCeilingStartY)})`}
+          fontSize={10}
           fill="#FF6B6B"
           fontStyle="bold"
         />
@@ -309,37 +403,37 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
         {/* 우물천장 치수선 - 가로(내부 상단) */}
         <Line
           points={[
-            offsetX + ceilingStartX * scale,
-            offsetY + ceilingStartY * scale + 25,
-            offsetX + (ceilingStartX + finalCeilingWidth) * scale,
-            offsetY + ceilingStartY * scale + 25,
+            offsetX + finalCeilingStartX * scale,
+            offsetY + finalCeilingStartY * scale + 25,
+            offsetX + (finalCeilingStartX + finalCeilingWidth) * scale,
+            offsetY + finalCeilingStartY * scale + 25,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Line
           points={[
-            offsetX + ceilingStartX * scale,
-            offsetY + ceilingStartY * scale + 20,
-            offsetX + ceilingStartX * scale,
-            offsetY + ceilingStartY * scale + 30,
+            offsetX + finalCeilingStartX * scale,
+            offsetY + finalCeilingStartY * scale + 20,
+            offsetX + finalCeilingStartX * scale,
+            offsetY + finalCeilingStartY * scale + 30,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Line
           points={[
-            offsetX + (ceilingStartX + finalCeilingWidth) * scale,
-            offsetY + ceilingStartY * scale + 20,
-            offsetX + (ceilingStartX + finalCeilingWidth) * scale,
-            offsetY + ceilingStartY * scale + 30,
+            offsetX + (finalCeilingStartX + finalCeilingWidth) * scale,
+            offsetY + finalCeilingStartY * scale + 20,
+            offsetX + (finalCeilingStartX + finalCeilingWidth) * scale,
+            offsetY + finalCeilingStartY * scale + 30,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Text
-          x={offsetX + (ceilingStartX + finalCeilingWidth / 2) * scale - 35}
-          y={offsetY + ceilingStartY * scale + 10}
+          x={offsetX + (finalCeilingStartX + finalCeilingWidth / 2) * scale - 35}
+          y={offsetY + finalCeilingStartY * scale + 10}
           text={`${Math.round(finalCeilingWidth)} mm`}
           fontSize={12}
           fill="#FF6B6B"
@@ -349,37 +443,37 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
         {/* 우물천장 치수선 - 세로(내부 좌측) */}
         <Line
           points={[
-            offsetX + ceilingStartX * scale + 25,
-            offsetY + ceilingStartY * scale,
-            offsetX + ceilingStartX * scale + 25,
-            offsetY + (ceilingStartY + finalCeilingDepth) * scale,
+            offsetX + finalCeilingStartX * scale + 25,
+            offsetY + finalCeilingStartY * scale,
+            offsetX + finalCeilingStartX * scale + 25,
+            offsetY + (finalCeilingStartY + finalCeilingDepth) * scale,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Line
           points={[
-            offsetX + ceilingStartX * scale + 20,
-            offsetY + ceilingStartY * scale,
-            offsetX + ceilingStartX * scale + 30,
-            offsetY + ceilingStartY * scale,
+            offsetX + finalCeilingStartX * scale + 20,
+            offsetY + finalCeilingStartY * scale,
+            offsetX + finalCeilingStartX * scale + 30,
+            offsetY + finalCeilingStartY * scale,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Line
           points={[
-            offsetX + ceilingStartX * scale + 20,
-            offsetY + (ceilingStartY + finalCeilingDepth) * scale,
-            offsetX + ceilingStartX * scale + 30,
-            offsetY + (ceilingStartY + finalCeilingDepth) * scale,
+            offsetX + finalCeilingStartX * scale + 20,
+            offsetY + (finalCeilingStartY + finalCeilingDepth) * scale,
+            offsetX + finalCeilingStartX * scale + 30,
+            offsetY + (finalCeilingStartY + finalCeilingDepth) * scale,
           ]}
           stroke="#FF6B6B"
           strokeWidth={1}
         />
         <Text
-          x={offsetX + ceilingStartX * scale + 10}
-          y={offsetY + (ceilingStartY + finalCeilingDepth / 2) * scale - 7}
+          x={offsetX + finalCeilingStartX * scale + 10}
+          y={offsetY + (finalCeilingStartY + finalCeilingDepth / 2) * scale - 7}
           text={`${Math.round(finalCeilingDepth)} mm`}
           fontSize={12}
           fill="#FF6B6B"
@@ -417,6 +511,11 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
           const isHorizontal = spk.edge === 'top' || spk.edge === 'bottom';
           const rectWidth = isHorizontal ? speakerLength * scale : speakerWidth * scale;
           const rectHeight = isHorizontal ? speakerWidth * scale : speakerLength * scale;
+          const isHidden = hiddenSpeakers.has(spk.id);
+          const isSelected = selectedId === `spk-${spk.id}`;
+          // 숨김 스피커는 fill만 반투명, 테두리는 선명하게
+          const fillColor = isHidden ? 'rgba(244, 67, 54, 0.3)' : '#F44336';
+          const textOpacity = isHidden ? 0.3 : 1;
           
           return (
             <React.Fragment key={`spk-${spk.id}`}>
@@ -425,25 +524,42 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
                 y={offsetY + spk.y * scale - rectHeight / 2}
                 width={rectWidth}
                 height={rectHeight}
-                fill="#F44336"
-                stroke={selectedId === `spk-${spk.id}` ? '#ff9800' : '#D32F2F'}
-                strokeWidth={selectedId === `spk-${spk.id}` ? 3 : 1}
+                fill={fillColor}
+                stroke={isSelected ? '#FF6F00' : '#D32F2F'}
+                strokeWidth={isSelected ? 3 : 1}
+                dash={isHidden ? [10, 5] : undefined}
                 draggable
                 onDragEnd={(e: any) => handleDragEnd(e, spk.id, 'SPK')}
                 onClick={() => setSelectedId(`spk-${spk.id}`)}
               />
               <Text
-                x={offsetX + spk.x * scale}
-                y={offsetY + spk.y * scale}
-                text={`S${spk.id}`}
+                x={offsetX + spk.x * scale - rectWidth / 2}
+                y={offsetY + spk.y * scale - rectHeight / 2}
+                width={rectWidth}
+                height={rectHeight}
+                text={formatSpeakerName(spk.id, !isHorizontal)}
                 fontSize={11}
                 fill="#FFFFFF"
                 fontStyle="bold"
                 align="center"
                 verticalAlign="middle"
-                offsetX={6}
-                offsetY={6}
-                rotation={isHorizontal ? 0 : 90}
+                rotation={0}
+                opacity={textOpacity}
+                listening={true}
+                onDblClick={() => handleSpeakerNameEdit(spk.id)}
+                onClick={() => setSelectedId(`spk-${spk.id}`)}
+                onMouseEnter={(e: any) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) {
+                    container.style.cursor = 'pointer';
+                  }
+                }}
+                onMouseLeave={(e: any) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) {
+                    container.style.cursor = 'default';
+                  }
+                }}
               />
             </React.Fragment>
           );
@@ -563,6 +679,31 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
               <Grid item xs={6}>
                 <TextField
                   fullWidth
+                  label="우물천장 시작 X (mm)"
+                  type="number"
+                  value={inputCeilingStartX}
+                  onChange={(e) => setInputCeilingStartX(Number(e.target.value))}
+                  size="small"
+                  helperText="좌상단 X 좌표"
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="우물천장 시작 Y (mm)"
+                  type="number"
+                  value={inputCeilingStartY}
+                  onChange={(e) => setInputCeilingStartY(Number(e.target.value))}
+                  size="small"
+                  helperText="좌상단 Y 좌표"
+                />
+              </Grid>
+            </Grid>
+            
+            <Grid container spacing={1} sx={{ mb: 2 }}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
                   label="최소 스피커 간격 (mm)"
                   type="number"
                   value={inputMinGap}
@@ -629,6 +770,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
                   depth: inputDepth,
                   ceilingWidth: inputCeilingWidth,
                   ceilingDepth: inputCeilingDepth,
+                  ceilingStartX: inputCeilingStartX,
+                  ceilingStartY: inputCeilingStartY,
                   minGap: inputMinGap,
                   maxGap: inputMaxGap,
                   horizontalCount: inputHorizontalCount,
@@ -641,13 +784,13 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
             )}
             
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              현재 우물천장 크기:
+              현재 우물천장:
             </Typography>
             <Typography variant="body2">
-              가로: {Math.round(finalCeilingWidth)} mm
+              크기: {Math.round(finalCeilingWidth)} × {Math.round(finalCeilingDepth)} mm
             </Typography>
             <Typography variant="body2">
-              세로: {Math.round(finalCeilingDepth)} mm
+              시작점: ({Math.round(finalCeilingStartX)}, {Math.round(finalCeilingStartY)}) mm
             </Typography>
           </Paper>
         </Grid>

@@ -24,6 +24,8 @@ export interface Survey {
   living_room_depth: number;
   ceiling_width?: number;   // 우물천장 가로 (mm)
   ceiling_depth?: number;   // 우물천장 세로 (mm)
+  ceiling_start_x?: number; // 우물천장 시작 X 좌표 (mm)
+  ceiling_start_y?: number; // 우물천장 시작 Y 좌표 (mm)
   ceiling_height?: number;
   speaker_length?: number;  // 스피커 길이 (mm)
   speaker_width?: number;   // 스피커 폭 (mm)

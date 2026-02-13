@@ -52,7 +52,9 @@ class LayoutService:
                                horizontal_count: int = None,
                                vertical_count: int = None,
                                ceiling_width: float = None,  # 실사에서 입력한 우물천장 가로
-                               ceiling_depth: float = None) -> Tuple[List[Dict], Dict[str, float]]:  # 실사에서 입력한 우물천장 세로
+                               ceiling_depth: float = None,  # 실사에서 입력한 우물천장 세로
+                               ceiling_start_x: float = None,  # 우물천장 시작점 X 좌표
+                               ceiling_start_y: float = None) -> Tuple[List[Dict], Dict[str, float]]:  # 우물천장 시작점 Y 좌표
         """
         거실 중앙의 우물천장 라인을 따라 스피커 배치
         스피커는 우물천장 라인 바깥쪽(거실 외곽 방향)에 붙어서 배치
@@ -70,6 +72,8 @@ class LayoutService:
             vertical_count: 세로 스피커 개수 (None이면 자동 계산)
             ceiling_width: 실사에서 입력한 우물천장 가로 (None이면 자동 계산)
             ceiling_depth: 실사에서 입력한 우물천장 세로 (None이면 자동 계산)
+            ceiling_start_x: 우물천장 시작점 X 좌표 (None이면 중앙 배치)
+            ceiling_start_y: 우물천장 시작점 Y 좌표 (None이면 중앙 배치)
         
         Returns:
             (스피커 위치 리스트, 각 변의 gap 정보)
@@ -221,13 +225,19 @@ class LayoutService:
             final_ceiling_depth = min(final_ceiling_depth, depth * 0.9)
             print(f"[DEBUG] Auto mode - Final ceiling - Width: {final_ceiling_width}, Depth: {final_ceiling_depth}")
         
-        # 우물천장 시작점 (중앙 배치)
-        ceiling_start_x = (width - final_ceiling_width) / 2
-        ceiling_start_y = (depth - final_ceiling_depth) / 2
+        # 우물천장 시작점: 사용자가 지정하면 그 값 사용, 없으면 중앙 배치
+        if ceiling_start_x is not None and ceiling_start_y is not None:
+            final_ceiling_start_x = ceiling_start_x
+            final_ceiling_start_y = ceiling_start_y
+            print(f"[DEBUG] Using user-defined ceiling position - X: {final_ceiling_start_x}, Y: {final_ceiling_start_y}")
+        else:
+            final_ceiling_start_x = (width - final_ceiling_width) / 2
+            final_ceiling_start_y = (depth - final_ceiling_depth) / 2
+            print(f"[DEBUG] Using centered ceiling position - X: {final_ceiling_start_x}, Y: {final_ceiling_start_y}")
         
         # 우물천장 끝점
-        ceiling_end_x = ceiling_start_x + final_ceiling_width
-        ceiling_end_y = ceiling_start_y + final_ceiling_depth
+        ceiling_end_x = final_ceiling_start_x + final_ceiling_width
+        ceiling_end_y = final_ceiling_start_y + final_ceiling_depth
         
         positions = []
         speaker_id = 1
@@ -249,8 +259,8 @@ class LayoutService:
             
             for i in range(top_count):
                 # i번째 스피커 중심 = 간격*(i+1) + 스피커길이*i + 스피커길이/2
-                x = ceiling_start_x + gap * (i + 1) + speaker_length * (i + 0.5)
-                y = ceiling_start_y - half_speaker_width
+                x = final_ceiling_start_x + gap * (i + 1) + speaker_length * (i + 0.5)
+                y = final_ceiling_start_y - half_speaker_width
                 positions.append({
                     "id": speaker_id,
                     "x": round(x, 1),
@@ -270,7 +280,7 @@ class LayoutService:
             
             for i in range(right_count):
                 x = ceiling_end_x + half_speaker_width
-                y = ceiling_start_y + gap * (i + 1) + speaker_length * (i + 0.5)
+                y = final_ceiling_start_y + gap * (i + 1) + speaker_length * (i + 0.5)
                 positions.append({
                     "id": speaker_id,
                     "x": round(x, 1),
@@ -309,7 +319,7 @@ class LayoutService:
             gaps['left'] = round(gap, 1)
             
             for i in range(left_count):
-                x = ceiling_start_x - half_speaker_width
+                x = final_ceiling_start_x - half_speaker_width
                 # 좌측은 아래에서 위로 배치
                 y = ceiling_end_y - (gap * (i + 1) + speaker_length * (i + 0.5))
                 positions.append({
@@ -378,7 +388,9 @@ class LayoutService:
                    horizontal_count: int = None,
                    vertical_count: int = None,
                    ceiling_width: float = None,
-                   ceiling_depth: float = None) -> Dict:
+                   ceiling_depth: float = None,
+                   ceiling_start_x: float = None,
+                   ceiling_start_y: float = None) -> Dict:
         """
         자동 설계 생성
         
@@ -395,6 +407,8 @@ class LayoutService:
             vertical_count: 세로 스피커 개수 (None이면 자동)
             ceiling_width: 우물천장 가로 (None이면 자동)
             ceiling_depth: 우물천장 세로 (None이면 자동)
+            ceiling_start_x: 우물천장 시작 X 좌표 (None이면 자동)
+            ceiling_start_y: 우물천장 시작 Y 좌표 (None이면 자동)
         
         Returns:
             설계 결과
@@ -412,7 +426,9 @@ class LayoutService:
             horizontal_count=horizontal_count,
             vertical_count=vertical_count,
             ceiling_width=ceiling_width,
-            ceiling_depth=ceiling_depth
+            ceiling_depth=ceiling_depth,
+            ceiling_start_x=ceiling_start_x,
+            ceiling_start_y=ceiling_start_y
         )
         
         # 간섭 회피

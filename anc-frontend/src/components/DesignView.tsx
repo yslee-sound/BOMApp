@@ -107,6 +107,8 @@ const DesignView: React.FC = () => {
     depth: number;
     ceilingWidth: number;
     ceilingDepth: number;
+    ceilingStartX: number;
+    ceilingStartY: number;
     minGap: number;
     maxGap: number;
     horizontalCount: number;
@@ -122,6 +124,8 @@ const DesignView: React.FC = () => {
         living_room_depth: params.depth,
         ceiling_width: params.ceilingWidth,
         ceiling_depth: params.ceilingDepth,
+        ceiling_start_x: params.ceilingStartX,
+        ceiling_start_y: params.ceilingStartY,
       });
 
       // 자동 설계 재실행
@@ -197,6 +201,8 @@ const DesignView: React.FC = () => {
               speakerWidth={survey.speaker_width || 130}
               ceilingWidth={survey.ceiling_width}
               ceilingDepth={survey.ceiling_depth}
+              ceilingStartX={survey.ceiling_start_x}
+              ceilingStartY={survey.ceiling_start_y}
               speakerGaps={design.speaker_gaps}
               onUpdatePositions={handleUpdatePositions}
               onApplyChanges={handleApplyChanges}
