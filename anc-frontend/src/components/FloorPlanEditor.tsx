@@ -17,6 +17,8 @@ interface FloorPlanEditorProps {
   onApplyChanges?: (params: {
     width: number;
     depth: number;
+    ceilingWidth: number;
+    ceilingDepth: number;
     minGap: number;
     maxGap: number;
     horizontalCount: number;
@@ -48,6 +50,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   // 입력 필드용 임시 상태 (적용 버튼 누르기 전까지 도면에 반영되지 않음)
   const [inputWidth, setInputWidth] = useState<number>(width);
   const [inputDepth, setInputDepth] = useState<number>(depth);
+  const [inputCeilingWidth, setInputCeilingWidth] = useState<number>(ceilingWidth || width * 0.7);
+  const [inputCeilingDepth, setInputCeilingDepth] = useState<number>(ceilingDepth || depth * 0.7);
   const [inputMinGap, setInputMinGap] = useState<number>(100); // 최소 스피커 간격
   const [inputMaxGap, setInputMaxGap] = useState<number>(600); // 최대 스피커 간격
   const [inputHorizontalCount, setInputHorizontalCount] = useState<number>(2); // 가로 스피커 개수
@@ -85,7 +89,9 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
   useEffect(() => {
     setInputWidth(width);
     setInputDepth(depth);
-  }, [width, depth]);
+    setInputCeilingWidth(ceilingWidth || width * 0.7);
+    setInputCeilingDepth(ceilingDepth || depth * 0.7);
+  }, [width, depth, ceilingWidth, ceilingDepth]);
 
   const handleVSChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setShowVS(event.target.checked);
@@ -506,6 +512,26 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
             
             <TextField
               fullWidth
+              label="우물천장 가로 (mm)"
+              type="number"
+              value={inputCeilingWidth}
+              onChange={(e) => setInputCeilingWidth(Number(e.target.value))}
+              sx={{ mb: 2 }}
+              size="small"
+            />
+            
+            <TextField
+              fullWidth
+              label="우물천장 세로 (mm)"
+              type="number"
+              value={inputCeilingDepth}
+              onChange={(e) => setInputCeilingDepth(Number(e.target.value))}
+              sx={{ mb: 2 }}
+              size="small"
+            />
+            
+            <TextField
+              fullWidth
               label="최소 스피커 간격 (mm)"
               type="number"
               value={inputMinGap}
@@ -556,6 +582,8 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
                 onClick={() => onApplyChanges({
                   width: inputWidth,
                   depth: inputDepth,
+                  ceilingWidth: inputCeilingWidth,
+                  ceilingDepth: inputCeilingDepth,
                   minGap: inputMinGap,
                   maxGap: inputMaxGap,
                   horizontalCount: inputHorizontalCount,

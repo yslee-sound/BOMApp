@@ -105,6 +105,8 @@ const DesignView: React.FC = () => {
   const handleApplyChanges = async (params: {
     width: number;
     depth: number;
+    ceilingWidth: number;
+    ceilingDepth: number;
     minGap: number;
     maxGap: number;
     horizontalCount: number;
@@ -113,11 +115,13 @@ const DesignView: React.FC = () => {
     if (!survey) return;
 
     try {
-      // Survey 데이터 업데이트 (크기 정보만)
+      // Survey 데이터 업데이트 (크기 정보 및 우물천장 정보)
       await createOrUpdateSurvey(Number(houseId), {
         ...survey,
         living_room_width: params.width,
         living_room_depth: params.depth,
+        ceiling_width: params.ceilingWidth,
+        ceiling_depth: params.ceilingDepth,
       });
 
       // 자동 설계 재실행

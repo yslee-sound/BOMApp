@@ -74,8 +74,11 @@ class LayoutService:
         Returns:
             (스피커 위치 리스트, 각 변의 gap 정보)
         """
+        # 사용자가 우물천장 크기를 명시적으로 지정했는지 확인
+        user_defined_ceiling = (ceiling_width is not None and ceiling_depth is not None)
+        
         # 우물천장 크기가 실사에서 입력된 경우 그 값을 사용
-        if ceiling_width is not None and ceiling_depth is not None:
+        if user_defined_ceiling:
             print(f"[DEBUG] Using user-defined ceiling size - Width: {ceiling_width}, Depth: {ceiling_depth}")
             initial_ceiling_width = ceiling_width
             initial_ceiling_depth = ceiling_depth
@@ -174,28 +177,32 @@ class LayoutService:
         print(f"[DEBUG] Required ceiling - Width: {required_ceiling_width}, Depth: {required_ceiling_depth}")
         
         # 우물천장 크기 결정
-        # 사용자가 스피커 개수를 지정한 경우 필요한 크기를 우선 사용
-        if horizontal_count is not None and vertical_count is not None:
-            # 수동 지정 시: 필요한 크기를 그대로 사용 (거실 크기의 90%까지 허용)
-            ceiling_width = min(required_ceiling_width, width * 0.9)
-            ceiling_depth = min(required_ceiling_depth, depth * 0.9)
-            print(f"[DEBUG] Manual mode - Final ceiling - Width: {ceiling_width}, Depth: {ceiling_depth}")
+        if user_defined_ceiling:
+            # 사용자가 우물천장 크기를 명시적으로 입력한 경우: 입력값을 그대로 사용
+            final_ceiling_width = initial_ceiling_width
+            final_ceiling_depth = initial_ceiling_depth
+            print(f"[DEBUG] User-defined mode - Final ceiling - Width: {final_ceiling_width}, Depth: {final_ceiling_depth}")
+        elif horizontal_count is not None and vertical_count is not None:
+            # 스피커 개수를 수동 지정한 경우: 필요한 크기를 그대로 사용 (거실 크기의 90%까지 허용)
+            final_ceiling_width = min(required_ceiling_width, width * 0.9)
+            final_ceiling_depth = min(required_ceiling_depth, depth * 0.9)
+            print(f"[DEBUG] Manual speaker count mode - Final ceiling - Width: {final_ceiling_width}, Depth: {final_ceiling_depth}")
         else:
             # 자동 계산 시: 초기 크기와 필요 크기 중 큰 것 사용
-            ceiling_width = max(initial_ceiling_width, required_ceiling_width)
-            ceiling_depth = max(initial_ceiling_depth, required_ceiling_depth)
+            final_ceiling_width = max(initial_ceiling_width, required_ceiling_width)
+            final_ceiling_depth = max(initial_ceiling_depth, required_ceiling_depth)
             # 거실 크기를 넘지 않도록 제한
-            ceiling_width = min(ceiling_width, width * 0.9)
-            ceiling_depth = min(ceiling_depth, depth * 0.9)
-            print(f"[DEBUG] Auto mode - Final ceiling - Width: {ceiling_width}, Depth: {ceiling_depth}")
+            final_ceiling_width = min(final_ceiling_width, width * 0.9)
+            final_ceiling_depth = min(final_ceiling_depth, depth * 0.9)
+            print(f"[DEBUG] Auto mode - Final ceiling - Width: {final_ceiling_width}, Depth: {final_ceiling_depth}")
         
         # 우물천장 시작점 (중앙 배치)
-        ceiling_start_x = (width - ceiling_width) / 2
-        ceiling_start_y = (depth - ceiling_depth) / 2
+        ceiling_start_x = (width - final_ceiling_width) / 2
+        ceiling_start_y = (depth - final_ceiling_depth) / 2
         
         # 우물천장 끝점
-        ceiling_end_x = ceiling_start_x + ceiling_width
-        ceiling_end_y = ceiling_start_y + ceiling_depth
+        ceiling_end_x = ceiling_start_x + final_ceiling_width
+        ceiling_end_y = ceiling_start_y + final_ceiling_depth
         
         positions = []
         speaker_id = 1
@@ -210,7 +217,7 @@ class LayoutService:
             # 총 스피커 길이
             total_speaker_length = speaker_length * top_count
             # 남은 여백
-            remaining_space = ceiling_width - total_speaker_length
+            remaining_space = final_ceiling_width - total_speaker_length
             # 간격 (시작, 중간, 끝)
             gap = remaining_space / (top_count + 1)
             gaps['top'] = round(gap, 1)
@@ -232,7 +239,7 @@ class LayoutService:
         if right_count > 0:
             # 우측은 세로 배치이므로 speaker_length가 세로 방향 길이
             total_speaker_length = speaker_length * right_count
-            remaining_space = ceiling_depth - total_speaker_length
+            remaining_space = final_ceiling_depth - total_speaker_length
             gap = remaining_space / (right_count + 1)
             gaps['right'] = round(gap, 1)
             
@@ -251,7 +258,7 @@ class LayoutService:
         # 하단 (우→좌) - 우물천장 라인 아래쪽(거실 외곽 방향)
         if bottom_count > 0:
             total_speaker_length = speaker_length * bottom_count
-            remaining_space = ceiling_width - total_speaker_length
+            remaining_space = final_ceiling_width - total_speaker_length
             gap = remaining_space / (bottom_count + 1)
             gaps['bottom'] = round(gap, 1)
             
@@ -272,7 +279,7 @@ class LayoutService:
         if left_count > 0:
             # 좌측은 세로 배치이므로 speaker_length가 세로 방향 길이
             total_speaker_length = speaker_length * left_count
-            remaining_space = ceiling_depth - total_speaker_length
+            remaining_space = final_ceiling_depth - total_speaker_length
             gap = remaining_space / (left_count + 1)
             gaps['left'] = round(gap, 1)
             
