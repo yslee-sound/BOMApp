@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+// 개발 환경에서는 localhost:8000, 프로덕션(빌드된 exe)에서는 상대 경로 사용
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? '/api/v1'  // 프로덕션: 같은 서버의 상대 경로
+  : 'http://localhost:8000/api/v1';  // 개발: 별도 서버
 
 const api = axios.create({
   baseURL: API_BASE_URL,
